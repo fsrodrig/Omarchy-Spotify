@@ -31,10 +31,25 @@ Item {
     ? (customClientId ? customClientId.toLowerCase() : clientId) : ""
   property bool initialized: false
   property bool switchingIdentity: false
-  Component.onCompleted: {
+  // Hosts that load customClientId asynchronously hold this false until it is
+  // final, so the initial load is not treated as an identity change.
+  property bool settingsReady: true
+  function initializeIdentity() {
+    if (initialized || !settingsReady) return
     initialized = true
-    if (!validClientId) changeIdentity()
+    if (!validClientId) {
+      changeIdentity()
+      return
+    }
+    if (tokenWaiters.length > 0 && !secretLookup.running && !refreshBusy) {
+      lookupPurpose = "request"
+      startSecretLookup()
+    } else {
+      restoreSession()
+    }
   }
+  Component.onCompleted: initializeIdentity()
+  onSettingsReadyChanged: initializeIdentity()
   onResolvedClientIdChanged: if (initialized) changeIdentity()
   property int oauthPort: 8989
   property string callbackPath: "/login"
@@ -130,6 +145,10 @@ Item {
       callback("", lastError || "Spotify application is changing. Try again.")
       return
     }
+    if (!initialized) {
+      tokenWaiters = tokenWaiters.concat([callback])
+      return
+    }
     if (tokenIsFresh()) {
       callback(accessToken, "")
       return
@@ -145,7 +164,7 @@ Item {
   }
 
   function restoreSession() {
-    if (switchingIdentity || !validClientId) return
+    if (!initialized || switchingIdentity || !validClientId) return
     sessionChecked = false
     if (secretLookup.running || refreshBusy) return
     lookupPurpose = "restore"
@@ -265,7 +284,7 @@ Item {
   }
 
   function beginLogin() {
-    if (loginBusy || refreshBusy || switchingIdentity || !validClientId) return
+    if (!initialized || loginBusy || refreshBusy || switchingIdentity || !validClientId) return
     lastError = ""
     loginBusy = true
     callbackHandled = false

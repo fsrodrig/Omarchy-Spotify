@@ -4,6 +4,12 @@ import "../.." as Plugin
 
 ShellRoot {
   Plugin.AuthManager { id: auth; pluginDir: "/nonexistent" }
+  Plugin.AuthManager { id: gated; pluginDir: "/nonexistent"; settingsReady: false }
+  property int gatedResets: 0
+  Connections {
+    target: gated
+    function onLoggedOut() { gatedResets++ }
+  }
   function check(condition, message) {
     if (!condition) throw new Error(message)
   }
@@ -11,6 +17,18 @@ ShellRoot {
     interval: 1
     running: true
     onTriggered: {
+    check(auth.lookupPurpose === "restore" || auth.sessionChecked, "Default client ID never restored the saved session")
+    check(!gated.initialized, "Auth initialized before settings were ready")
+    var queued = false
+    gated.withAccessToken(function() { queued = true })
+    check(!queued && gated.tokenWaiters.length === 1, "Token request was not queued while gated")
+    gated.customClientId = "22222222222222222222222222222222"
+    check(gatedResets === 0, "Loading the saved client ID reset the session")
+    gated.settingsReady = true
+    check(gated.initialized && gated.lookupPurpose === "request",
+      "Queued token request was not served after settings were ready")
+    gated.customClientId = "33333333333333333333333333333333"
+    check(gatedResets === 1 && queued, "Real client ID change did not force re-login")
     auth.accessToken = "old"
     auth.accessTokenExpiresAt = Date.now() + 3600000
     auth.loggedIn = true

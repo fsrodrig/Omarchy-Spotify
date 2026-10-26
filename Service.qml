@@ -53,6 +53,9 @@ Item {
     clientId: ""
   })
   property var settings: Api.shallowCopy(defaultSettingValues)
+  // Settings arrive a tick after construction; until then clientId is the
+  // default, and AuthManager would mistake loading a saved ID for a switch.
+  property bool settingsReady: false
 
   readonly property string deviceName: String(settings.deviceName || "Omarchy Spotify").trim() || "Omarchy Spotify"
   readonly property int idleShutdownMinutes: Math.max(0, Math.min(1440,
@@ -648,7 +651,10 @@ Item {
   }
 
   function configuredEntry() {
-    var config = shell && shell.shellConfig ? shell.shellConfig : null
+    // Omarchy 4 hands third-party services a scoped PluginShellApi that only
+    // exposes a copy of the bar section as barConfig, not shellConfig.
+    var config = shell && shell.shellConfig ? shell.shellConfig
+      : (shell && shell.barConfig ? { bar: shell.barConfig } : null)
     if (!config) return null
     var layout = config.bar && config.bar.layout ? config.bar.layout : null
     var sections = ["left", "center", "right"]
@@ -666,7 +672,9 @@ Item {
   }
 
   function syncSettings() {
-    applySettings(configuredEntry() || {})
+    var entry = configuredEntry()
+    applySettings(entry || {})
+    if (entry || shell) settingsReady = true
     reconcileSessionPersistence()
     resumeLyricsInstallIntent()
   }
@@ -3766,6 +3774,7 @@ Item {
     target: root.shell
     ignoreUnknownSignals: true
     function onShellConfigChanged() { root.syncSettings() }
+    function onBarConfigChanged() { root.syncSettings() }
   }
 
   Connections {
@@ -4140,6 +4149,14 @@ Item {
     id: authManager
     pluginDir: root.pluginDir
     customClientId: settings.clientId
+    settingsReady: root.settingsReady
+  }
+
+  // Never leave auth gated if the host never supplies a shell/config object.
+  Timer {
+    interval: 3000
+    running: !root.settingsReady
+    onTriggered: root.settingsReady = true
   }
 
   AuthManager {
