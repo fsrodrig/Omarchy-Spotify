@@ -9,7 +9,7 @@ source_id_file="$runtime_dir/backend-source.sha256"
 binary_hash_file="$runtime_dir/backend-binary.sha256"
 origin_file="$runtime_dir/backend-origin"
 architecture=$(uname -m)
-repository=stappmus/Omarchy-Spotify
+repository=fsrodrig/Omarchy-Spotify
 workflow_identity="https://github.com/$repository/.github/workflows/release-backend.yml"
 
 # Build outside the plugin directory: Omarchy hot-reloads a plugin whenever any

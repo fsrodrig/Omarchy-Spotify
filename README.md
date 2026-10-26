@@ -1,5 +1,7 @@
 # Omarchy Spotify
 
+> This is a fork of [stappmus/Omarchy-Spotify](https://github.com/stappmus/Omarchy-Spotify).
+
 **Spotify in Quickshell—not Chromium.**
 
 Omarchy Spotify brings the Spotify experience you already know into a fast,
@@ -13,7 +15,7 @@ for you, ready when you want them.
 ## Install
 
 ```bash
-omarchy plugin add https://github.com/stappmus/Omarchy-Spotify.git --enable
+omarchy plugin add https://github.com/fsrodrig/Omarchy-Spotify.git --enable
 ```
 
 Requires Omarchy 4 and a personal Spotify Premium account.
