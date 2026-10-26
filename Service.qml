@@ -557,6 +557,9 @@ Item {
   }
 
   function applySettings(values) {
+    // The bar binds a widget's service before injecting its settings, so the
+    // first push is always an empty object, not a request to reset.
+    if (!values || Object.keys(values).length === 0) return
     var previousDeviceName = deviceName
     var next = normalizedSettings(values)
     if (JSON.stringify(next) !== JSON.stringify(settings)) settings = next
@@ -566,6 +569,7 @@ Item {
       apiDevices = relabelLocalDevices(apiDevices, previousDeviceName, next.deviceName)
       devices = relabelLocalDevices(devices, previousDeviceName, next.deviceName)
     }
+    settingsReady = true
   }
 
   function persistSettings(values) {
@@ -672,9 +676,10 @@ Item {
   }
 
   function syncSettings() {
+    // After a shell.json reload the scoped barConfig can be a stale copy of
+    // the built-in layout, so a missing entry keeps the widget-pushed values.
     var entry = configuredEntry()
-    applySettings(entry || {})
-    if (entry || shell) settingsReady = true
+    if (entry) applySettings(entry)
     reconcileSessionPersistence()
     resumeLyricsInstallIntent()
   }
@@ -4152,7 +4157,7 @@ Item {
     settingsReady: root.settingsReady
   }
 
-  // Never leave auth gated if the host never supplies a shell/config object.
+  // Never leave auth gated if no configured entry or widget settings arrive.
   Timer {
     interval: 3000
     running: !root.settingsReady
