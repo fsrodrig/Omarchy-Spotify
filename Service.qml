@@ -3013,6 +3013,7 @@ Item {
   function sendLocalSocketPlayback(playbackSerial) {
     if (playbackSerial !== pendingPlaybackSerial || !pendingPlaybackBody) return
     var body = pendingPlaybackBody
+    var item = pendingPlayback
     var successMessage = pendingPlaybackMessage
     var radioPlaylist = pendingPlaybackRadio
     clearPendingPlayback()
@@ -3026,6 +3027,7 @@ Item {
         root.loadPlaybackState()
         return
       }
+      root.pendingPlayback = item
       root.pendingPlaybackBody = body
       root.pendingPlaybackMessage = successMessage
       root.pendingPlaybackRadio = radioPlaylist
@@ -3115,6 +3117,7 @@ Item {
 
   function sendPendingPlayback(deviceId) {
     var body = pendingPlaybackBody
+    var item = pendingPlayback
     var successMessage = pendingPlaybackMessage
     var radioPlaylist = pendingPlaybackRadio
     var playbackSerial = pendingPlaybackSerial
@@ -3145,6 +3148,14 @@ Item {
                 if (failure) root.fail(failure)
                 else dispatch(true)
               }, { priority: "interactive", retryRateLimit: false })
+            return
+          }
+          var trackBody = error
+            ? Api.restrictedContextFallbackBody(status, payload, body, item) : null
+          if (trackBody) {
+            body = trackBody
+            radioPlaylist = null
+            dispatch(retried)
             return
           }
           if (error) { root.fail(error); return }

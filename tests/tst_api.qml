@@ -1893,6 +1893,31 @@ TestCase {
     compare(candidate.item.uri, "spotify:track:t4")
   }
 
+  function test_restrictedContextFallbackBody_playsTrackAlone() {
+    var restricted = { error: { status: 403,
+      message: "Player command failed: Restriction violated", reason: "UNKNOWN" } }
+    var context = { context_uri: "spotify:playlist:37i9dQZF1EYkqdzj48dyYq",
+      offset: { uri: "spotify:track:t1" } }
+    var track = { type: "track", uri: "spotify:track:t1" }
+    compare(JSON.stringify(Api.restrictedContextFallbackBody(403, restricted, context, track)),
+      JSON.stringify({ uris: ["spotify:track:t1"] }))
+  }
+
+  function test_restrictedContextFallbackBody_keepsOtherFailures() {
+    var restricted = { error: { status: 403,
+      message: "Player command failed: Restriction violated" } }
+    var context = { context_uri: "spotify:playlist:abc" }
+    var track = { type: "track", uri: "spotify:track:t1" }
+    compare(Api.restrictedContextFallbackBody(404, restricted, context, track), null)
+    compare(Api.restrictedContextFallbackBody(403,
+      { error: { status: 403, message: "Premium required" } }, context, track), null)
+    compare(Api.restrictedContextFallbackBody(403, restricted,
+      { uris: ["spotify:track:t1"] }, track), null)
+    compare(Api.restrictedContextFallbackBody(403, restricted, context,
+      { type: "playlist", uri: "spotify:playlist:abc" }), null)
+    compare(Api.restrictedContextFallbackBody(403, restricted, context, null), null)
+  }
+
   function test_resumePlaybackAvailable_needsIdleReceiverAndCandidate() {
     var candidate = { item: { uri: "spotify:track:t1", name: "x" } }
     compare(Api.resumePlaybackAvailable(false, candidate), true)

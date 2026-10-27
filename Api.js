@@ -2239,6 +2239,20 @@ function playbackBody(item, sourceItems, contextUri) {
   return body
 }
 
+// Development-mode apps cannot play Spotify's personalized playlists (Daily
+// Mix, On Repeat, daylist…), and Spotify rejects the whole command with a 403
+// "Restriction violated". Recently played often points at one of those, so a
+// track picked from such a context would never start. Fall back to the track
+// alone, which those apps may still play.
+function restrictedContextFallbackBody(status, payload, body, item) {
+  if (Number(status) !== 403 || !body || !body.context_uri) return null
+  var error = payload && typeof payload.error === "object" ? payload.error : null
+  if (!error || !/restriction violated/i.test(String(error.message || ""))) return null
+  var itemUri = item ? String(item.uri || "") : ""
+  if (!/^spotify:(track|episode):/.test(itemUri)) return null
+  return { uris: [itemUri] }
+}
+
 function millisecondsToClock(milliseconds) {
   var seconds = Math.max(0, Math.floor((Number(milliseconds) || 0) / 1000))
   var minutes = Math.floor(seconds / 60)
